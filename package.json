@@ -1,5 +1,5 @@
 {
-  "name": "leetcode-extension",
+  "name": "leetco",
   "version": "1.0.0",
   "main": "server.js",
   "directories": {
@@ -12,5 +12,13 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "axios": "^1.13.2",
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "papaparse": "^5.5.3",
+    "winston": "^3.19.0"
+  }
 }
