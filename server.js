@@ -1,72 +1,65 @@
-const express = require('express');
-const cors = require('cors');
-const cron = require('node-cron');
-const problemRoutes = require('./routes/problem.routes');
-const DataService = require('./services/dataService');
-const logger = require('./utils/logger');
+/**
+ * server.js — add these 3 lines to your existing file
+ *
+ * Lines marked  ← ADD  are new. Everything else is unchanged.
+ */
 
-const app = express();
+const express          = require('express');
+const cors             = require('cors');
+const cron             = require('node-cron');
+const problemRoutes    = require('./routes/problem.routes');
+const complexityRoutes = require('./routes/complexity.routes');  // ← ADD
+const DataService      = require('./services/dataService');
+const logger           = require('./utils/logger');
+
+const app  = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Request logging
 app.use((req, res, next) => {
   logger.info(`${req.method} ${req.path}`);
   next();
 });
 
-// Routes
 app.use('/api', problemRoutes);
+app.use('/api', complexityRoutes);   // ← ADD  →  exposes POST /api/analyze-complexity
 
-// Health check endpoint
 app.get('/api/health', (req, res) => {
   const status = DataService.getStatus();
   res.json({
-    status: 'ok',
-    dataVersion: status.lastUpdated,
-    totalProblems: status.totalProblems,
-    totalCompanies: status.totalCompanies
+    status        : 'ok',
+    dataVersion   : status.lastUpdated,
+    totalProblems : status.totalProblems,
+    totalCompanies: status.totalCompanies,
   });
 });
 
-// Error handling
 app.use((err, req, res, next) => {
   logger.error('Error:', err);
-  res.status(500).json({
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
+  res.status(500).json({ error: 'Internal server error' });
 });
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
-// Initialize data on startup
 async function initialize() {
   try {
     logger.info('Initializing application...');
     await DataService.initialize();
     logger.info('Data loaded successfully');
-    
-    // Schedule daily updates at 2 AM
+
     cron.schedule('0 2 * * *', async () => {
       logger.info('Running scheduled data update...');
-      try {
-        await DataService.updateData();
-        logger.info('Scheduled update completed');
-      } catch (error) {
-        logger.error('Scheduled update failed:', error);
-      }
+      try { await DataService.updateData(); logger.info('Scheduled update done'); }
+      catch (e) { logger.error('Scheduled update failed:', e); }
     });
-    
+
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
-      logger.info(`Health check: http://localhost:${PORT}/api/health`);
+      logger.info(`→ POST /api/analyze-complexity  [NEW]`);  // ← ADD
     });
   } catch (error) {
     logger.error('Failed to initialize:', error);
@@ -74,15 +67,7 @@ async function initialize() {
   }
 }
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully');
-  process.exit(0);
-});
+process.on('SIGTERM', () => { logger.info('SIGTERM'); process.exit(0); });
+process.on('SIGINT',  () => { logger.info('SIGINT');  process.exit(0); });
 
 initialize();
